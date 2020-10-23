@@ -4,7 +4,8 @@ import pickle
 from PDU import PDU
 from resources import resources
 from message import Error, Success
-import sys
+import random
+# import sys
 
 
 ## create UDP socket
@@ -35,6 +36,8 @@ def binary_to_pdu (binary_pdu):
 
 def pdu_to_binary (pdu):
     # print(sys.getsizeof(pdu))
+    # binary = pickle.dumps(pdu)
+    # print(sys.getsizeof(binary))
     return pickle.dumps(pdu)
 
 def create_PDU(Type, data):
@@ -69,14 +72,13 @@ def list_files():
 
 
 def search_file(file_name):
+    host_list = []
     for ip, port, file in resources:
         if file == file_name:
-            return 'S', (ip, port)
+            host_list.append((ip, port))
+    if any(host_list):
+        return 'S', random.choice(host_list)
     return 'E', Error.FileNotFound
-
-
-
-
 
 while True:
 
@@ -154,6 +156,6 @@ while True:
     elif pdu_type == 'O':
         response_type, response_data = list_files()
         response_pdu = create_PDU(Type=response_type,data=response_data)
-        print("Size: ", sys.getsizeof(response_pdu))
+        # print("Size: ", sys.getsizeof(response_pdu))
         bytes_to_send = pdu_to_binary(response_pdu)
         UDP_server_socket.sendto(bytes_to_send, client_address)

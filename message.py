@@ -6,6 +6,7 @@ class Error(Enum):
     FileNotFound = 'The requested file does not exist'
     deleteFail = 'There was an error deleting requested file'
     ServerEmpty = 'Server does not contain any files by the time of request.'
+    DownloadRequestOnly = 'This peer only accepts D type PDUs.'
 
 class Success(Enum):
     RegisterOK = 'File successfully registered.'

@@ -17,6 +17,15 @@ def create_OPDU():
 #
 def create_SPDU(file):
     return PDU(T='S', data=file)
+
+def create_FPDU(data):
+    return PDU(T='F', data=data)
+
+def create_LPDU(data):
+    return PDU(T='L', data=data)
+
+def create_DPDU(file):
+    return PDU(T='D', data=file)
 #
 # def create_RPDU():
 #     return
