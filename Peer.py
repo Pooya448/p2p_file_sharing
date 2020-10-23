@@ -119,7 +119,9 @@ while True:
         pass
 
     elif command == 'L':
-        pass
+        print("Files registered on the central server:")
+        for file in peer_registered_entries:
+            print(file)
 
     elif command == 'R':
 
