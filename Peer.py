@@ -2,8 +2,9 @@
 import socket
 import select
 import pickle
-from PDU import PDU
 from message import Error, Success
+from PDU_factory import create_RPDU, create_UPDU, create_OPDU, create_SPDU
+import sys
 
 peer_registered_entries = []
 ## create UDP socket in order to connect to central server
@@ -37,19 +38,65 @@ def binary_to_pdu (binary_pdu):
     return pickle.loads(binary_pdu)
 
 def pdu_to_binary (pdu):
+    # print(sys.getsizeof(pdu))
     return pickle.dumps(pdu)
 
-def create_PDU(Type, data):
-    return PDU(Type, data)
+# def create_PDU(Type, data):
+#     return PDU(Type, data)
 
 def select_file_name():
     pass
 
-## remove a file from central server
+def register_file(file):
+    my_ip = str(socket.gethostbyname(socket.gethostname()))
+    register_pdu = create_RPDU(ip=my_ip, port=TCP_Port, file=file)
+
+    send_pdu_to_server(register_pdu)
+    response_pdu = receive_server_pdu()
+
+    response_pdu_type = response_pdu.t
+    if response_pdu_type == 'A':
+        peer_registered_entries.append(file)
+        print('Server Response:', response_pdu.data.value)
+    elif response_pdu_type == 'E':
+        print('Server Response:', response_pdu.data.value)
+
+def retrieve_files():
+    list_pdu = create_OPDU()
+
+    send_pdu_to_server(list_pdu)
+    response_pdu = receive_server_pdu()
+
+    response_pdu_type = response_pdu.t
+
+    if response_pdu_type == 'O':
+        print("Files on server:")
+        counter = 1
+        for file in response_pdu.data:
+            print(counter,".",file)
+            counter += 1
+        return True
+    elif response_pdu_type == 'E':
+        print('Server Response:', response_pdu.data.value)
+        return False
+
+def retrieve_file_address(file):
+    list_pdu = create_SPDU(file)
+
+    send_pdu_to_server(list_pdu)
+    response_pdu = receive_server_pdu()
+
+    if response_pdu.t == 'S':
+        host_ip, host_port = response_pdu.data
+        print('\nHost IP:', host_ip, "\tHost Port:", host_port)
+        return host_ip, host_port
+    elif response_pdu.t == 'E':
+        print('Server Response:', response_pdu.data.value)
+
+
 def remove_file(file):
 
-    data_to_send = file
-    remove_pdu = create_PDU(Type='U', data=data_to_send)
+    remove_pdu = create_UPDU(file=file)
 
     send_pdu_to_server(remove_pdu)
     response_pdu = receive_server_pdu()
@@ -64,14 +111,19 @@ def remove_file(file):
 
 def exit_peer():
     counter = 0
+    files_removed = []
     for file in peer_registered_entries:
         if remove_file(file):
+            files_removed.append(file)
             counter += 1
     if counter == len(peer_registered_entries):
         print("Successfully removed", counter, "entries from server")
+        print("Files removed:")
+        for file in files_removed:
+            print(file)
         return True
+    return False
 
-## download file from another peer
 def download_file(filename, ip, port):
     ## create TCP connection
     ## request download (D type PDU)
@@ -112,36 +164,35 @@ while True:
     command = input()
 
     if command == 'O':
+
         ## fetch files list from server
-        ## ask user for specific file
-        ## fetch that file's address from server
-        ## download that file from the owner peer
-        pass
+        if retrieve_files():
+            ## ask user for specific file
+            print("Enter the name of file to download:")
+            selected_file = input()
+            ## fetch that file's address from server
+            host_ip, host_port = retrieve_file_address(selected_file)
+            ## download that file from the owner peer
+            download_file(selected_file, host_ip, host_port)
+
 
     elif command == 'L':
-        print("Files registered on the central server:")
-        for file in peer_registered_entries:
-            print(file)
+        if any(peer_registered_entries):
+            print("Files registered on the central server:")
+            for file in peer_registered_entries:
+                print(file)
+        else:
+            print("There are no local files by now.")
 
     elif command == 'R':
-
+        # print("Enter file name to register:")
+        # file = input()
         file = 'khiar.mkv'
-        my_ip = str(socket.gethostbyname(socket.gethostname()))
-        data_to_send = (my_ip, TCP_Port, file)
-        register_pdu = create_PDU(Type='R', data=data_to_send)
-
-        send_pdu_to_server(register_pdu)
-        response_pdu = receive_server_pdu()
-
-        response_pdu_type = response_pdu.t
-        if response_pdu_type == 'A':
-            peer_registered_entries.append(file)
-            print('Server Response:', response_pdu.data.value)
-        elif response_pdu_type == 'E':
-            print('Server Response:', response_pdu.data.value)
+        register_file(file)
 
     if command == 'U':
-
+        # print("Enter file name to delete from server:")
+        # file = input()
         file = 'khiar.mkv'
         if remove_file(file):
             peer_registered_entries.remove(file)
